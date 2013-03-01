@@ -62,15 +62,21 @@ app.get('/search', function (req, res) {
       return res.send(err);
     }
 
-    results.to.path(results.from, 'routes', 'all', 99, 'shortestPath', function (err, path) {
+    results.from.path(results.to, 'routes', 'out', 99, 'shortestPath', function (err, path) {
       var duration = 0;
       var price = 0;
 
       var tasks = [];
 
-      // Calculate duration
+      // Display Path
+      console.log("Path Taken: ")
+      _.forEach(path.nodes, function (node) {
+        console.log(node.id);
+      });
+
+      // Queue tasks of retreieving each relationship and calc price & duration
       _.forEach(path.relationships, function (rel) {
-        // console.log(rel.id); // odd... can't access data property
+        // Can't access data property from rel. so retrieve from db.
 
         tasks.push(function (callback) {
           neo.retrieveRelationshipById(rel.id, function (err, rel) {
@@ -81,13 +87,12 @@ app.get('/search', function (req, res) {
         })
       });
 
+      // Exec tasks
       async.parallel(tasks, function (err, results) {
-        payload.push({ to: req.param("to"), from: req.param("from"), duration: duration });
+        payload.push({ from: req.param("from"), to: req.param("to"), duration: duration });
         res.send(payload);
       });
-
     });
-
   });
 
 });
