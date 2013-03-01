@@ -4,6 +4,7 @@ var app = express();
 
 var redis = require('./lib/redis');
 var async = require('async');
+var _ = require('lodash');
 
 // Express Middleware
 app.use(express.bodyParser());
@@ -42,7 +43,7 @@ app.get('/search', function (req, res) {
   async.parallel({
     to: function (callback) {
       redis.getId(req.param("to"), function (id) {
-        neo.retrieveById(id, function (err, node) {
+        neo.retrieveNodeById(id, function (err, node) {
           if (err) return callback(err);
           callback(null, node);
         });
@@ -50,7 +51,7 @@ app.get('/search', function (req, res) {
     },
     from: function (callback) {
       redis.getId(req.param("from"), function (id) {
-        neo.retrieveById(id, function (err, node) {
+        neo.retrieveNodeById(id, function (err, node) {
         if (err) return callback(err);
           callback(null, node);
         });
@@ -62,10 +63,30 @@ app.get('/search', function (req, res) {
     }
 
     results.to.path(results.from, 'routes', 'all', 99, 'shortestPath', function (err, path) {
-      console.log(path);
+      var duration = 0;
+      var price = 0;
+
+      var tasks = [];
+
+      // Calculate duration
+      _.forEach(path.relationships, function (rel) {
+        // console.log(rel.id); // odd... can't access data property
+
+        tasks.push(function (callback) {
+          neo.retrieveRelationshipById(rel.id, function (err, rel) {
+            duration += rel.data.duration;
+            price += rel.data.price;
+            callback(null);
+          });
+        })
+      });
+
+      async.parallel(tasks, function (err, results) {
+        payload.push({ to: req.param("to"), from: req.param("from"), duration: duration });
+        res.send(payload);
+      });
+
     });
-    payload.push({ to: req.param("to"), from: req.param("from"), duration: 0 });
-    res.send(payload);
 
   });
 
