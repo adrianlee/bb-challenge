@@ -30,38 +30,43 @@ app.get('/init2', function (req, res) {
 app.get('/search', function (req, res) {
   var payload = [];
 
+  if (req.param("to") == req.param("from")) {
+    return res.send("Don't be silly");
+  }
+
   if (!req.param("to") || !req.param("from")) {
-    return res.send("Invalid Query")
+    return res.send("Invalid Query");
   }
 
   // Get Ids
   async.parallel({
-    to: function (cb) {
-      redis.getId(req.param("to"), function (r) {
-        cb(null, r);
+    to: function (callback) {
+      redis.getId(req.param("to"), function (id) {
+        neo.retrieveById(id, function (err, node) {
+          if (err) return callback(err);
+          callback(null, node);
+        });
       });
     },
-    from: function (cb) {
-      redis.getId(req.param("from"), function (r) {
-        cb(null, r);
+    from: function (callback) {
+      redis.getId(req.param("from"), function (id) {
+        neo.retrieveById(id, function (err, node) {
+        if (err) return callback(err);
+          callback(null, node);
+        });
       });
     }
   }, function (err, results) {
-    console.log(results);
+    if (err) {
+      return res.send(err);
+    }
 
-    // retrieve node
-    neo.retrieveById(results.to, function (err, node) {
-      if (err) return console.log(err);
-      console.dir(node.data);
+    results.to.path(results.from, 'routes', 'all', 99, 'shortestPath', function (err, path) {
+      console.log(path);
     });
-
-    neo.retrieveById(results.from, function (err, node) {
-      if (err) return console.log(err);
-      console.dir(node.data);
-    });
-
     payload.push({ to: req.param("to"), from: req.param("from"), duration: 0 });
     res.send(payload);
+
   });
 
 });
