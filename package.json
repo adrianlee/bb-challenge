@@ -18,5 +18,9 @@
     "neo4j": "~0.2.19",
     "lodash": "~1.0.1",
     "mocha": "~1.8.1"
+  },
+  "devDependencies": {
+    "should": "~1.2.2",
+    "mocha": "~1.8.1"
   }
 }
